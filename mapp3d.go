@@ -12,10 +12,16 @@ import (
 	"strings"
 
 	"github.com/urfave/cli"
+	digest "github.com/xinsnake/go-http-digest-auth-client"
 )
 
 var client http.Client
-var baseURL = "http://ultimaker.hackrva.org/api/api/v1/"
+var baseURL string
+var uname string
+var id string
+var key string
+var printer = "um3"
+var transport digest.DigestTransport
 
 type requestBody struct {
 	Application string `json:"application"`
@@ -43,7 +49,12 @@ func main() {
 			Action: status,
 		},
 		{
-			Name:   "lights",
+			Name: "lights",
+			Flags: []cli.Flag{
+				cli.UintFlag{Name: "hue", Value: 0},
+				cli.UintFlag{Name: "saturation", Value: 0},
+				cli.UintFlag{Name: "brightness, value", Value: 100},
+			},
 			Usage:  "mess with the printers lights",
 			Action: lights,
 		},
@@ -57,8 +68,8 @@ func main() {
 	app.Run(os.Args)
 }
 
-func startup(c *cli.Context) {
-	fmt.Println("init test")
+//checks for config file and setup
+func init() {
 	usr, err := user.Current()
 	if err != nil {
 		fmt.Println(err)
@@ -66,7 +77,30 @@ func startup(c *cli.Context) {
 	settings, err := ioutil.ReadFile(usr.HomeDir + "/.mapp3d")
 	if err != nil {
 		fmt.Println(err)
-		fmt.Println("creating settings file ...")
+		fmt.Println("we need to create a configuaration file bforeto continue")
+		fmt.Println("the file will be saved to '~/.mapp3d'")
+		fmt.Println("creating config file ...")
+		settings = makeConfigFile(usr.HomeDir + "/.mapp3d")
+	}
+	var cfg config
+	err = json.Unmarshal(settings, &cfg)
+	baseURL = cfg.BaseURL
+	uname = cfg.User
+	key = cfg.Key
+	id = cfg.ID
+	transport = digest.NewTransport(key, id)
+
+}
+
+func startup(c *cli.Context) {
+	usr, err := user.Current()
+	if err != nil {
+		fmt.Println(err)
+	}
+	settings, err := ioutil.ReadFile(usr.HomeDir + "/.mapp3d")
+	if err != nil {
+		fmt.Println(err)
+		fmt.Println("creating config file ...")
 		settings = makeConfigFile(usr.HomeDir + "/.mapp3d")
 	}
 	fmt.Println(string(settings))
@@ -80,6 +114,13 @@ func makeConfigFile(filePath string) []byte {
 	if err != nil {
 		panic(err)
 	}
+	fmt.Println("enter the baseurl for the printer API")
+	baseURL, err = bufio.NewReader(os.Stdin).ReadString('\n')
+	if err != nil {
+		panic(err)
+	}
+	baseURL = strings.TrimSpace(baseURL)
+
 	uname = strings.TrimSpace(uname)
 	reqBody, err := json.Marshal(requestBody{"max's application", uname})
 	fmt.Println(string(reqBody))
@@ -106,15 +147,31 @@ func makeConfigFile(filePath string) []byte {
 
 func lights(c *cli.Context) {
 	fmt.Println("lights test")
+	type lightsRequest struct {
+		Hue        uint `json:"hue"`
+		Saturation uint `json:"saturation"`
+		Brightness uint `json:"brightness"`
+	}
+	body, err := json.Marshal(lightsRequest{c.Uint("hue"), c.Uint("saturation"), c.Uint("brightness")})
+	if err != nil {
+		panic(err)
+	}
+	req, err := http.NewRequest("PUT", baseURL+"printer/led", bytes.NewBuffer(body))
+	res, err := transport.RoundTrip(req)
+	resBody, err := ioutil.ReadAll(res.Body)
+	for k, v := range res.Header {
+		fmt.Println(k, v)
+	}
+	fmt.Println(res.Status)
+	fmt.Println(string(resBody))
 }
 
 func status(c *cli.Context) {
-	fmt.Println("status test")
-	request, err := http.NewRequest("GET", baseURL+"printer/status", nil)
+	request, err := http.NewRequest("GET", baseURL+"auth/check/"+id, nil)
 	if err != nil {
 		fmt.Println(err)
 	}
 	response, err := client.Do(request)
 	body, err := ioutil.ReadAll(response.Body)
-	fmt.Println(string(body))
+	fmt.Println("the printer status is", string(body))
 }

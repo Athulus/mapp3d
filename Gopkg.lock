@@ -7,9 +7,15 @@
   revision = "cfb38830724cc34fedffe9a2a29fb54fa9169cd1"
   version = "v1.20.0"
 
+[[projects]]
+  name = "github.com/xinsnake/go-http-digest-auth-client"
+  packages = ["."]
+  revision = "366760120fe0342664d581b235be4eb08aca8834"
+  version = "v0.3.0"
+
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "dc31bf18b10af3b28727eb5be721811713c44bfc4ac5f49047e4ce7829f998a2"
+  inputs-digest = "a4831dc6fe6dbb6cf221f38269a17acf48fe0c888da456389b630b405fa6ea22"
   solver-name = "gps-cdcl"
   solver-version = 1
