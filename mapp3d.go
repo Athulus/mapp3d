@@ -59,6 +59,20 @@ func main() {
 			Action: lights,
 		},
 		{
+			Name: "print",
+			Flags: []cli.Flag{
+				cli.StringFlag{Name: "model, m", Usage: "the path to the 3d model you want to print (.stl)"},
+				cli.StringFlag{Name: "slicer", Usage: "the path to the slicing configuration file you want to use"},
+			},
+			Usage:  "input a 3d model, and it will be sliced and the gcode sent to your printer",
+			Action: print,
+		},
+		{
+			Name:   "slice",
+			Usage:  "configure the slicing properties for your prints",
+			Action: slice,
+		},
+		{
 			Name:   "init",
 			Usage:  "register the app with the printer. get an access token",
 			Action: startup,
@@ -175,3 +189,6 @@ func status(c *cli.Context) {
 	body, err := ioutil.ReadAll(response.Body)
 	fmt.Println("the printer status is", string(body))
 }
+
+func slice(c *cli.Context) {}
+func print(c *cli.Context) {}
